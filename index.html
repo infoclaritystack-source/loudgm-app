@@ -564,6 +564,7 @@
     <div class="modal-actions" style="margin-top:0.75rem;">
       <button class="btn-ghost" onclick="closeModal('exportModal')">Close</button>
       <button class="btn-primary" onclick="copyExportCode()">📄 Copy Code</button>
+      <button class="btn-primary" onclick="downloadExportCode()">⬇️ Download as File</button>
     </div>
   </div>
 </div>
@@ -832,13 +833,26 @@ function openExportModal() {
 function copyExportCode() {
   const ta = document.getElementById('exportCode');
   ta.select();
-  ta.setSelectionRange(0, 99999);
+  ta.setSelectionRange(0, ta.value.length);
   try {
     document.execCommand('copy');
     alert('✅ Copied! Paste over the DEFAULT_ITEMS array in the HTML file, save, then redeploy.');
   } catch(e) {
-    alert('Could not auto-copy. Please select the text manually and copy it.');
+    alert('Could not auto-copy. Please select the text manually and copy it, or use the Download button instead.');
   }
+}
+function downloadExportCode() {
+  const ta = document.getElementById('exportCode');
+  const blob = new Blob([ta.value], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'default_items_export.js';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  alert('✅ Downloaded! Open default_items_export.js, copy its full contents, and paste over the DEFAULT_ITEMS array in the HTML file.');
 }
 
 // ── PAGES ──
