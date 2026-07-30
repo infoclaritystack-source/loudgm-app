@@ -61,6 +61,20 @@
   /* COURIER NOTE */
   .courier-note { background: var(--surface2); border: 1px solid var(--border); border-left: 3px solid var(--amber); border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.82rem; color: var(--text2); margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem; }
 
+  /* BUSINESS INFO BAR (loaded from app.json) */
+  .biz-bar {
+    display: none; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.9rem;
+    background: var(--surface2); border-bottom: 1px solid var(--border);
+    padding: 0.45rem 1rem; font-size: 0.78rem; color: var(--text2); text-align: center;
+  }
+  .biz-bar.visible { display: flex; }
+  .biz-bar a { color: var(--text2); text-decoration: none; display: inline-flex; align-items: center; gap: 0.3rem; }
+  .biz-bar a:hover { color: var(--amber); }
+  .biz-bar .biz-fb { color: #1877F2; font-weight: 700; }
+  .biz-bar .biz-fb:hover { color: #145dbf; }
+  .biz-bar span.biz-sep { color: var(--border); }
+  @media (max-width: 480px) { .biz-bar { font-size: 0.72rem; gap: 0.6rem; } }
+
   /* FILTER */
   .filter-bar { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
   .filter-chip { background: var(--surface); border: 1.5px solid var(--border); color: var(--text2); border-radius: 50px; padding: 0.3rem 0.9rem; font-size: 0.8rem; font-weight: 500; cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.18s; }
@@ -276,6 +290,9 @@
     <button class="toggle-btn" onclick="toggleTheme()" id="themeBtn">🌙 Dark</button>
   </div>
 </nav>
+
+<!-- BUSINESS INFO BAR — populated from app.json, safe to edit that file anytime -->
+<div class="biz-bar" id="bizBar"></div>
 
 <!-- ADMIN BANNER -->
 <div class="admin-banner" id="adminBanner">
@@ -2004,6 +2021,48 @@ function calcFinance() {
 }
 // ── INIT ──
 loadItems(); // renderCatalog is called inside after IndexedDB photo rehydration
+loadBusinessInfo(); // populates the contact bar from app.json — never touches items/photos
+
+// ── BUSINESS INFO BAR (app.json) ──
+function escapeHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str == null ? '' : str;
+  return d.innerHTML;
+}
+
+async function loadBusinessInfo() {
+  const bar = document.getElementById('bizBar');
+  if (!bar) return;
+  try {
+    const res = await fetch('app.json', { cache: 'no-store' });
+    if (!res.ok) return; // no app.json yet — just show nothing, no error to the visitor
+    const info = await res.json();
+
+    const parts = [];
+
+    if (info.address) {
+      parts.push(`<span>📍 ${escapeHtml(info.address)}</span>`);
+    }
+    if (info.phone) {
+      const dial = String(info.phone).replace(/[^\d+]/g, '');
+      parts.push(`<a href="tel:${escapeHtml(dial)}">📞 ${escapeHtml(info.phone)}</a>`);
+    }
+    if (info.email) {
+      parts.push(`<a href="mailto:${escapeHtml(info.email)}">✉️ ${escapeHtml(info.email)}</a>`);
+    }
+    if (info.facebookUrl) {
+      parts.push(`<a class="biz-fb" href="${escapeHtml(info.facebookUrl)}" target="_blank" rel="noopener">📘 Facebook</a>`);
+    }
+
+    if (parts.length) {
+      bar.innerHTML = parts.join('<span class="biz-sep">·</span>');
+      bar.classList.add('visible');
+    }
+  } catch (e) {
+    // app.json missing or malformed — fail silently, catalog still works fine
+    console.warn('Business info not loaded:', e);
+  }
+}
 
 // ── CHANGE PIN ──
 const DEFAULT_PIN = '1234';
