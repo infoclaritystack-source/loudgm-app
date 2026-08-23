@@ -303,6 +303,7 @@
   <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
     <button class="add-item-btn" onclick="openAddModal()">＋ Add Item</button>
     <button class="add-item-btn" style="background:#0f766e;" onclick="openExportModal()">📋 Get Update Code</button>
+    <button class="add-item-btn" style="background:#1d4ed8;" onclick="openModal('statsModal'); loadAdminStats();">📊 Stats</button>
     <button class="add-item-btn" style="background:#6b3fa0;" onclick="openChangePinModal()">🔐 Change PIN</button>
     <button class="exit-admin-btn" onclick="exitAdmin()">Exit Admin</button>
   </div>
@@ -599,6 +600,68 @@
 <script>
 const SELLER_NUMBER = '27797539376';
 const ADMIN_PIN = '1234'; // ← CHANGE THIS TO YOUR OWN PIN
+
+// ── ANALYTICS (Supabase) ──
+// 1. Create a free Supabase project at supabase.com
+// 2. Run this SQL in the SQL Editor:
+//    create table app_events (
+//      id uuid default gen_random_uuid() primary key,
+//      event_type text not null,
+//      app_name text,
+//      created_at timestamptz default now()
+//    );
+// 3. Paste your project URL + anon key below
+const SUPABASE_URL = 'https://ccgiflegiktfbquoezko.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNjZ2lmbGVnaWt0ZmJxdW9lemtvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0NzA1MjEsImV4cCI6MjEwMzA0NjUyMX0.myWxQp4bcOLTqHMLU3wQQ3OtXdNlCS7h8nS2PQ5nrJQ';
+
+(async function trackVisit() {
+  if (SUPABASE_URL.includes('YOUR_PROJECT')) return; // not configured yet
+  const isNewVisitor = !localStorage.getItem('loudgm_visited');
+  if (isNewVisitor) localStorage.setItem('loudgm_visited', 'true');
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/app_events`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({
+        event_type: isNewVisitor ? 'new_visit' : 'return_visit',
+        app_name: 'loudgm'
+      })
+    });
+  } catch (e) { /* fail silently, never block the app */ }
+})();
+
+async function loadAdminStats() {
+  const panel = document.getElementById('statsPanelBody');
+  if (SUPABASE_URL.includes('YOUR_PROJECT')) {
+    panel.innerHTML = '<p>⚠️ Supabase not configured yet. Add your project URL and anon key in the script.</p>';
+    return;
+  }
+  panel.innerHTML = '<p>Loading…</p>';
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/app_events?app_name=eq.loudgm&select=event_type`, {
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+      }
+    });
+    const rows = await res.json();
+    const total = rows.length;
+    const newVisitors = rows.filter(r => r.event_type === 'new_visit').length;
+    const returning = total - newVisitors;
+    panel.innerHTML = `
+      <p><strong>Total opens:</strong> ${total}</p>
+      <p><strong>Unique visitors:</strong> ${newVisitors}</p>
+      <p><strong>Return visits:</strong> ${returning}</p>
+    `;
+  } catch (e) {
+    panel.innerHTML = '<p>⚠️ Could not load stats. Check your Supabase config.</p>';
+  }
+}
 const EMOJI_OPTIONS = ['🏍️','🚲','🛵','🚗','🚙','🚜','🛺','⛽','🔧','🪛','🔩','🛞','🪝','🏁','🧰','🪜','⚙️','🔑','📋','🛡️','🪖','🧲','💡','🔦','🛢️','🪣','🌿','🌾','🏔️','🌲'];
 
 // ── DEFAULT ITEMS (shown if nothing in localStorage yet) ──
@@ -1956,6 +2019,17 @@ function submitChangePin() {
   showToast('✅ PIN updated successfully!');
 }
 </script>
+
+<!-- ═══ STATS MODAL ═══ -->
+<div class="modal-overlay" id="statsModal">
+  <div class="modal-box" style="max-width:340px;">
+    <button class="modal-close" onclick="closeModal('statsModal')">✕</button>
+    <h2 style="font-family:Righteous,cursive;color:var(--amber);margin-bottom:1rem;">📊 Catalog Stats</h2>
+    <div id="statsPanelBody" style="font-size:0.95rem;line-height:1.6;color:var(--text);">
+      <p>Loading…</p>
+    </div>
+  </div>
+</div>
 
 <!-- ═══ CHANGE PIN MODAL ═══ -->
 <div class="modal-overlay" id="changePinModal">
